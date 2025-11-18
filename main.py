@@ -1,8 +1,13 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 
-app = FastAPI()
+from schemas import Inquiry
+from database import create_document, get_documents
+
+app = FastAPI(title="Food Photography Agency API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,6 +69,57 @@ def test_database():
     
     return response
 
+# Inquiries (Leads)
+@app.post("/api/inquiries")
+def create_inquiry(inquiry: Inquiry):
+    try:
+        inserted_id = create_document("inquiry", inquiry)
+        return {"success": True, "id": inserted_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/inquiries")
+def list_inquiries(limit: Optional[int] = 50):
+    try:
+        docs = get_documents("inquiry", limit=limit)
+        # Convert ObjectId to str for JSON serialization
+        for d in docs:
+            if "_id" in d:
+                d["_id"] = str(d["_id"])
+        return {"items": docs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Simple portfolio data for the frontend (static for demo)
+@app.get("/api/portfolio")
+def portfolio():
+    items = [
+        {
+            "title": "Gourmet Burger",
+            "image": "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=1600&auto=format&fit=crop",
+        },
+        {
+            "title": "Sushi Platter",
+            "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1600&auto=format&fit=crop",
+        },
+        {
+            "title": "Pasta Bowl",
+            "image": "https://images.unsplash.com/photo-1526312426976-593c2d0b-14c6?q=80&w=1600&auto=format&fit=crop",
+        },
+        {
+            "title": "Indian Thali",
+            "image": "https://images.unsplash.com/photo-1625944524791-8dd43259c59e?q=80&w=1600&auto=format&fit=crop",
+        },
+        {
+            "title": "Dessert Spread",
+            "image": "https://images.unsplash.com/photo-1511920170033-f8396924c348?q=80&w=1600&auto=format&fit=crop",
+        },
+        {
+            "title": "Mocktails",
+            "image": "https://images.unsplash.com/photo-1551024709-8f23befc6cf7?q=80&w=1600&auto=format&fit=crop",
+        },
+    ]
+    return {"items": items}
 
 if __name__ == "__main__":
     import uvicorn
